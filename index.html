@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>瞬間ジャッジ!撮影条件</title>
+<style>
+  :root{
+    --bg:#0f1720; --card:#18232f; --line:#2a3a4b; --text:#e8eef4; --muted:#93a4b5;
+    --accent:#4fb3ff; --ok:#3ccf8e; --ng:#ff6b6b; --warn:#ffc04d;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;overscroll-behavior:none}
+  .app{max-width:480px;margin:0 auto;min-height:100%;padding:14px 14px 24px;display:flex;flex-direction:column}
+  section{display:flex;flex-direction:column;gap:12px;flex:1}
+  h1{font-size:24px;margin:8px 0 0}
+  p{line-height:1.6;margin:0}
+  .muted{color:var(--muted);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  label{display:block;font-size:14px;margin:10px 0 4px;color:var(--muted)}
+  select,input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0c131b;color:var(--text);font-size:16px;user-select:text}
+  button{font:inherit;border:none;border-radius:14px;padding:14px;font-size:17px;font-weight:800;cursor:pointer}
+  .primary{background:var(--accent);color:#04121f;width:100%}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--text);width:100%}
+  .hidden{display:none!important}
+  .stages{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stage-btn{background:var(--card);border:1px solid var(--line);color:var(--text);text-align:left;padding:14px;border-radius:14px}
+  .stage-btn .nm{font-size:18px;font-weight:900}
+  .stage-btn .bt{font-size:12px;color:var(--muted);font-weight:400;margin-top:4px;line-height:1.5}
+  .ref-big{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center}
+  .ref-big div{background:#0c131b;border-radius:10px;padding:10px 4px}
+  .ref-big b{display:block;font-size:22px}
+  .hud{display:flex;justify-content:space-between;align-items:baseline}
+  .hud .time{font-size:28px;font-weight:900;font-variant-numeric:tabular-nums}
+  .hud .prog{font-size:18px;font-weight:800}
+  .pen{color:var(--ng);font-weight:800;font-size:14px;min-height:18px;text-align:center}
+  .pbar{height:6px;background:#0c131b;border-radius:3px;overflow:hidden}
+  .pbar>div{height:100%;background:var(--accent);width:0}
+  .play{position:relative;flex:1;display:flex;flex-direction:column;gap:10px}
+  .ptcard{display:flex;gap:12px;align-items:center}
+  .ptcard svg{flex:0 0 90px;height:124px}
+  .tag{display:inline-block;font-size:13px;padding:3px 10px;border-radius:999px;background:#0c131b;border:1px solid var(--line);font-weight:700}
+  .big{font-size:40px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+  .ref{font-size:14px;color:var(--muted);margin-top:6px}
+  .ref b{color:var(--text)}
+  .ask{text-align:center;font-weight:800;font-size:18px}
+  .ask small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+  .choices{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:auto}
+  .choices button{height:96px;font-size:20px;color:#04121f}
+  .c-down{background:#4fb3ff}.c-keep{background:#c9d4de}.c-up{background:#ffc04d}
+  .choices button:active{transform:scale(.96)}
+  .choices .arrow{display:block;font-size:26px;line-height:1}
+  .flash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:150px;font-weight:900;pointer-events:none;opacity:0}
+  .flash.ok{color:var(--ok)} .flash.ng{color:var(--ng)}
+  .flash.show{animation:fl .45s ease-out}
+  @keyframes fl{0%{opacity:.95;transform:scale(.7)}60%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.1)}}
+  .count{font-size:120px;font-weight:900;text-align:center;margin:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  .score{font-size:52px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  .ok-t{color:var(--ok)}.ng-t{color:var(--ng)}
+  textarea{width:100%;height:120px;background:#0c131b;color:var(--text);border:1px solid var(--line);border-radius:10px;font-size:11px;user-select:text}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ===== トップ:プロフィール ===== -->
+<section id="scr-start">
+  <h1>瞬間ジャッジ!<br>撮影条件</h1>
+  <p class="muted">部位ごとの基準条件から、患者さんの体格を見て<br><b>mAs を「下げる・そのまま・上げる」</b>を瞬時に判断。<br>20問を何秒でクリアできるか?</p>
+  <div class="card">
+    <label>ニックネーム(ランキングに表示)</label>
+    <input id="nick" maxlength="20" placeholder="例:ぎし太郎">
+    <label>経験年数</label>
+    <select id="exp">
+      <option value="">選んでください</option>
+      <option value="student">学生</option>
+      <option value="0-2">0〜2年</option>
+      <option value="3-5">3〜5年</option>
+      <option value="6-10">6〜10年</option>
+      <option value="11-20">11〜20年</option>
+      <option value="21+">21年以上</option>
+    </select>
+    <label>主な業務</label>
+    <select id="role">
+      <option value="general">一般撮影</option>
+      <option value="ct_mr">CT/MRI</option>
+      <option value="rt">放射線治療</option>
+      <option value="other">その他・複数</option>
+    </select>
+    <button id="btn-next" class="primary" style="margin-top:16px" onclick="toStages()">ステージを選ぶ</button>
+  </div>
+  <div class="card">
+    <p class="muted">・各編 20問。クリアまでの時間がスコアです(短いほど上位)。<br>・まちがえると <b id="pen-label">+3</b> 秒のペナルティ。<br>・kV は基準のまま固定。体格の差を mAs だけで判断します。<br>・<span id="data-note">回答(経験年数・回答・反応時間)は研究用に記録されます。個人を特定する情報は集めません。</span></p>
+  </div>
+</section>
+
+<!-- ===== ステージ選択 ===== -->
+<section id="scr-stages" class="hidden">
+  <h1>ステージ選択</h1>
+  <div class="stages" id="stage-list"></div>
+  <button class="ghost" onclick="show('scr-start')">プロフィールにもどる</button>
+</section>
+
+<!-- ===== ステージ説明(基準条件) ===== -->
+<section id="scr-intro" class="hidden">
+  <h1 id="in-name">膝編</h1>
+  <div class="card">
+    <p class="muted" style="margin-bottom:8px">この編の基準条件(標準体格)</p>
+    <div class="ref-big">
+      <div><span class="muted">体厚</span><b id="in-t">11 cm</b></div>
+      <div><span class="muted">管電圧</span><b id="in-kv">60 kV</b></div>
+      <div><span class="muted">mAs</span><b id="in-mas">5</b></div>
+    </div>
+    <p class="muted" style="margin-top:10px" id="in-view"></p>
+  </div>
+  <div class="card"><p class="muted">自己ベスト:<b id="in-best">−</b></p></div>
+  <button class="primary" onclick="countdown()">20問スタート</button>
+  <button class="ghost" onclick="toStages()">もどる</button>
+</section>
+
+<!-- ===== カウントダウン ===== -->
+<section id="scr-count" class="hidden"><div class="count" id="count">3</div></section>
+
+<!-- ===== プレイ ===== -->
+<section id="scr-play" class="hidden">
+  <div class="hud"><span class="time" id="hud-time">0.0</span><span class="prog" id="hud-prog">1 / 20</span></div>
+  <div class="pen" id="hud-pen"></div>
+  <div class="pbar"><div id="pbar"></div></div>
+  <div class="play">
+    <div class="card">
+      <span class="tag" id="q-stage">膝編</span>
+      <div class="ref">基準:体厚 <b id="ref-t">11</b> cm / <b id="ref-kv">60</b> kV / <b id="ref-mas">5</b> mAs</div>
+    </div>
+    <div class="card ptcard">
+      <svg id="sil" viewBox="0 0 100 140"></svg>
+      <div>
+        <div class="muted">この患者さんの体厚</div>
+        <div class="big" id="pt-t">13 cm</div>
+        <div class="muted" id="pt-body">170cm / 85kg</div>
+      </div>
+    </div>
+    <div class="ask">mAs は?<small>kV は基準のまま</small></div>
+    <div class="choices">
+      <button class="c-down" data-v="down"><span class="arrow">▼</span>下げる</button>
+      <button class="c-keep" data-v="keep"><span class="arrow">●</span>そのまま</button>
+      <button class="c-up"   data-v="up"><span class="arrow">▲</span>上げる</button>
+    </div>
+    <div class="flash" id="flash">○</div>
+  </div>
+</section>
+
+<!-- ===== 結果 ===== -->
+<section id="scr-result" class="hidden">
+  <h1 id="res-title">膝編 クリア!</h1>
+  <div class="card">
+    <div class="score" id="res-score">0.0 秒</div>
+    <p class="muted" style="text-align:center" id="res-sub"></p>
+  </div>
+  <div class="card"><b style="font-size:15px">体格別の正答</b><table id="res-table"></table></div>
+  <div class="card"><b style="font-size:15px">まちがえた問題</b><table id="res-miss"></table>
+    <p class="muted" style="margin-top:8px" id="rule-note"></p></div>
+  <div class="card"><b style="font-size:15px" id="rank-title">ランキング</b><table id="rank-table"></table>
+    <p class="muted" id="rank-src" style="margin-top:6px"></p></div>
+  <div class="row">
+    <button class="primary" onclick="countdown()">もう一度</button>
+    <button class="ghost" onclick="toStages()">ステージ選択</button>
+  </div>
+  <button class="ghost" onclick="toggleExport()">回答データを表示(コピー用)</button>
+  <textarea id="export-box" class="hidden" readonly></textarea>
+</section>
+
+</div>
+
+<script>
+/* =========================================================
+   集計先(Google Apps Script のウェブアプリURL)。空なら端末内のみ。
+   ========================================================= */
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzZcUgo55DTWtQWmXSvwYffZSIo-RRoZwrGy2x12TL4BFLOy0Xru9DivTyJcfO34wvS/exec';
+
+/* =========================================================
+   設定(臨床的妥当性は仮定。要確認・施設値へ置き換え前提)
+   ========================================================= */
+const N_Q      = 20;   // 1編の問題数
+const PENALTY  = 3;    // 誤答ペナルティ(秒)
+const HVL_CM   = 4;    // 体厚 約4cm で必要線量 約2倍(仮定)
+const KEEP_CM  = 1;    // |Δ体厚| <= 1cm は「そのまま」(仮定)
+const RULE_VERSION = 'v0.3';
+
+// 編ごとの基準条件と、出題する体厚差(cm)20問ぶん。下げる/そのまま/上げるが概ね均等。
+const STAGES = [
+  {id:'knee',   name:'膝編',     view:'膝関節 正面', ref:11, kv:60,  mas:5,
+   deltas:[-4,-3,-3,-2,-2,-2, -1,-1,0,0,0,1,1, 2,2,3,3,4,5,6]},
+  {id:'hip',    name:'股関節編', view:'股関節 正面', ref:20, kv:75,  mas:25,
+   deltas:[-6,-5,-4,-3,-2,-2, -1,-1,0,0,0,1,1, 2,3,4,5,6,7,8]},
+  {id:'chest',  name:'胸部編',   view:'胸部 PA',     ref:22, kv:120, mas:3.2,
+   deltas:[-6,-5,-4,-3,-2,-2, -1,-1,0,0,0,1,1, 2,3,4,5,6,7,8]},
+  {id:'abd',    name:'腹部編',   view:'腹部 AP',     ref:20, kv:75,  mas:25,
+   deltas:[-6,-5,-4,-3,-2,-2, -1,-1,0,0,0,1,1, 2,3,4,5,6,8,10]},
+  {id:'lspine', name:'腰椎編',   view:'腰椎 正面',   ref:20, kv:80,  mas:32,
+   deltas:[-6,-5,-4,-3,-2,-2, -1,-1,0,0,0,1,1, 2,3,4,5,6,8,10]},
+  {id:'cspine', name:'頸椎編',   view:'頸椎 側面',   ref:12, kv:70,  mas:10,
+   deltas:[-4,-3,-3,-2,-2,-2, -1,-1,0,0,0,1,1, 2,2,3,3,4,5,6]},
+];
+
+/* ========================================================= */
+const LBL = {up:'上げる', keep:'そのまま', down:'下げる'};
+const STORE_KEY='xray_judge_responses_v3', RANK_KEY='xray_judge_rank_v3';
+let st=null, raf=null, stage=null;
+
+// localStorage は使えない環境もあるので安全に包む
+const LS = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+};
+let memUid=null;
+function userId(){ let id=LS.get('xray_judge_uid',null)||memUid; if(!id){ id=uuid(); memUid=id; LS.set('xray_judge_uid',id);} return id; }
+
+document.getElementById('pen-label').textContent = '+'+PENALTY;
+if(!ENDPOINT) document.getElementById('data-note').textContent = '回答は端末内にのみ保存されます(テスト版)。';
+
+function show(id){
+  document.querySelectorAll('section').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+function uuid(){ return (window.crypto&&crypto.randomUUID) ? crypto.randomUUID() : 'x'+Date.now()+Math.random().toString(16).slice(2); }
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function correctOf(d){ return Math.abs(d)<=KEEP_CM ? 'keep' : (d>0 ? 'up' : 'down'); }
+function factorText(d){ return '×'+Math.pow(2,d/HVL_CM).toFixed(2); }
+function fmt(s){ return Number(s).toFixed(1)+' 秒'; }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const EXP_LBL={student:'学生','0-2':'0〜2年','3-5':'3〜5年','6-10':'6〜10年','11-20':'11〜20年','21+':'21年〜'};
+
+/* ---- 画面遷移 ---- */
+function toStages(){
+  if(!document.getElementById('exp').value){
+    show('scr-start');
+    const b=document.getElementById('btn-next'); b.textContent='経験年数を選んでください'; b.style.background='var(--ng)';
+    setTimeout(()=>{b.textContent='ステージを選ぶ'; b.style.background='';},1500); return;
+  }
+  const r=LS.get(RANK_KEY,{});
+  document.getElementById('stage-list').innerHTML = STAGES.map(s=>{
+    const best = r[s.id] && r[s.id][0] ? '自己ベスト '+fmt(r[s.id][0].time) : '未プレイ';
+    return `<button class="stage-btn" onclick="openStage('${s.id}')"><div class="nm">${s.name}</div><div class="bt">${s.view}<br>${best}</div></button>`;
+  }).join('');
+  show('scr-stages');
+}
+function openStage(id){
+  stage = STAGES.find(s=>s.id===id);
+  document.getElementById('in-name').textContent = stage.name;
+  document.getElementById('in-t').textContent = stage.ref+' cm';
+  document.getElementById('in-kv').textContent = stage.kv+' kV';
+  document.getElementById('in-mas').textContent = stage.mas;
+  document.getElementById('in-view').textContent = '撮影:'+stage.view+'。この基準から、体厚の違いに合わせて mAs を判断します。';
+  const r=LS.get(RANK_KEY,{})[stage.id];
+  document.getElementById('in-best').textContent = r&&r[0] ? fmt(r[0].time) : '−';
+  show('scr-intro');
+}
+function countdown(){
+  show('scr-count');
+  let n=3; const el=document.getElementById('count'); el.textContent=n;
+  const iv=setInterval(()=>{ n--; if(n>0) el.textContent=n; else { clearInterval(iv); startGame(); } },700);
+}
+
+/* ---- ゲーム本体 ---- */
+function makeQ(d){
+  const h = 150 + Math.round(Math.random()*35);
+  const bmi = Math.max(15, Math.min(40, 22 + d/stage.ref*20 + (Math.random()*2-1)));  // 表示用の演出。正解には不使用
+  return {d, t:stage.ref+d, height:h, weight:Math.round(bmi*(h/100)**2), bmi:+bmi.toFixed(1)};
+}
+function drawSil(d){
+  const w = Math.max(18, Math.min(46, 30 + d/stage.ref*60));
+  document.getElementById('sil').innerHTML = `
+    <circle cx="50" cy="18" r="12" fill="#93a4b5"/>
+    <path d="M${50-w} 40 Q50 32 ${50+w} 40 L${50+w*0.9} 100 Q50 108 ${50-w*0.9} 100 Z" fill="#93a4b5"/>
+    <rect x="${50-w*0.8}" y="100" width="${w*0.6}" height="36" rx="6" fill="#93a4b5"/>
+    <rect x="${50+w*0.2}" y="100" width="${w*0.6}" height="36" rx="6" fill="#93a4b5"/>`;
+}
+
+function startGame(){
+  st = { sessionId:uuid(), userId:userId(), nick:document.getElementById('nick').value.trim().slice(0,20),
+         exp:document.getElementById('exp').value, role:document.getElementById('role').value,
+         queue:shuffle(stage.deltas).slice(0,N_Q), i:0, correct:0, penalty:0, log:[],
+         t0:performance.now(), cur:null, lock:false, done:false };
+  document.getElementById('q-stage').textContent = stage.name+'('+stage.view+')';
+  document.getElementById('ref-t').textContent = stage.ref;
+  document.getElementById('ref-kv').textContent = stage.kv;
+  document.getElementById('ref-mas').textContent = stage.mas;
+  document.getElementById('hud-pen').textContent = '';
+  show('scr-play');
+  showQ();
+  cancelAnimationFrame(raf); raf=requestAnimationFrame(tick);
+}
+function showQ(){
+  const q = makeQ(st.queue[st.i]);
+  st.cur = {q, shown:performance.now()};
+  document.getElementById('hud-prog').textContent = `${st.i+1} / ${N_Q}`;
+  document.getElementById('pbar').style.width = (st.i/N_Q*100)+'%';
+  document.getElementById('pt-t').textContent = q.t + ' cm';
+  document.getElementById('pt-body').textContent = `${q.height}cm / ${q.weight}kg`;
+  drawSil(q.d);
+  st.lock=false;
+}
+function tick(){
+  if(!st || st.done) return;
+  document.getElementById('hud-time').textContent = ((performance.now()-st.t0)/1000 + st.penalty).toFixed(1);
+  raf=requestAnimationFrame(tick);
+}
+
+document.querySelectorAll('.choices button').forEach(b=>{
+  b.addEventListener('pointerdown', e=>{ e.preventDefault(); if(st && !st.lock && !st.done) answer(b.dataset.v); });
+});
+
+function answer(v){
+  st.lock=true;
+  const c=st.cur, q=c.q;
+  const rt=(performance.now()-c.shown)/1000;
+  const corr=correctOf(q.d), ok = v===corr;
+  if(ok) st.correct++; else st.penalty += PENALTY;
+  st.log.push({
+    q_index:st.i+1, patient_thickness_cm:q.t, delta_cm:q.d, height_cm:q.height, weight_kg:q.weight, bmi:q.bmi,
+    answer:v, correct_answer:corr, correct:ok?1:0, rt_sec:+rt.toFixed(3)
+  });
+
+  const f=document.getElementById('flash');
+  f.textContent = ok?'○':'×'; f.className='flash '+(ok?'ok':'ng');
+  void f.offsetWidth; f.classList.add('show');
+  if(!ok){
+    document.getElementById('hud-pen').textContent = `ペナルティ +${PENALTY}秒(正解:${LBL[corr]})`;
+    if(navigator.vibrate) try{navigator.vibrate(60);}catch(e){}
+  } else document.getElementById('hud-pen').textContent = '';
+  setTimeout(()=>{
+    if(!st || st.cur!==c) return;
+    st.i++;
+    if(st.i>=N_Q) finish(); else showQ();
+  }, ok?180:600);
+}
+
+function finish(){
+  st.done=true; cancelAnimationFrame(raf);
+  const log=st.log;
+  const answerSum = log.reduce((a,r)=>a+r.rt_sec,0);
+  const total = +(answerSum + st.penalty).toFixed(2);   // 回答時間の合計+ペナルティ(演出の待ち時間は含めない)
+
+  // 1プレイ分のデータ
+  const play = {
+    type:'play', session_id:st.sessionId, user_id:st.userId, nickname:st.nick, experience:st.exp, role:st.role,
+    stage:stage.id, ref_thickness_cm:stage.ref, ref_kv:stage.kv, ref_mas:stage.mas,
+    total_sec:total, correct:st.correct, n:N_Q, penalty_sec:st.penalty,
+    rule_version:RULE_VERSION, played_at:new Date().toISOString(), ua_mobile: /Mobi/i.test(navigator.userAgent)?1:0,
+    responses: log
+  };
+  const all=LS.get(STORE_KEY,[]); all.push(play); LS.set(STORE_KEY, all);
+  sendPlay(play);
+
+  document.getElementById('res-title').textContent = stage.name+' クリア!';
+  document.getElementById('res-score').textContent = fmt(total);
+  document.getElementById('res-sub').textContent =
+    `正解 ${st.correct}/${N_Q}/ペナルティ +${st.penalty}秒/1問平均 ${(answerSum/N_Q).toFixed(2)}秒`;
+
+  const groups=[['細い患者(下げる)','down'],['ほぼ基準(そのまま)','keep'],['大きい患者(上げる)','up']];
+  let h='<tr><th>患者</th><th>正解</th><th>主な誤答</th></tr>';
+  for(const [name,key] of groups){
+    const g=log.filter(r=>r.correct_answer===key);
+    const wrong={}; g.filter(r=>!r.correct).forEach(r=>wrong[r.answer]=(wrong[r.answer]||0)+1);
+    const top=Object.entries(wrong).sort((a,b)=>b[1]-a[1])[0];
+    h+=`<tr><td>${name}</td><td>${g.length? g.filter(r=>r.correct).length+'/'+g.length:'−'}</td><td>${top? LBL[top[0]]+'('+top[1]+')':'−'}</td></tr>`;
+  }
+  document.getElementById('res-table').innerHTML=h;
+
+  const miss=log.filter(r=>!r.correct);
+  document.getElementById('res-miss').innerHTML = miss.length
+    ? '<tr><th>体厚</th><th>体厚差</th><th>あなた→正解</th></tr>' + miss.map(r=>
+        `<tr><td>${r.patient_thickness_cm}cm</td><td>${r.delta_cm>0?'+':''}${r.delta_cm}cm<br><span class="muted">線量${factorText(r.delta_cm)}</span></td><td><span class="ng-t">${LBL[r.answer]}</span> → <span class="ok-t">${LBL[r.correct_answer]}</span></td></tr>`
+      ).join('')
+    : '<tr><td>全問正解!</td></tr>';
+  document.getElementById('rule-note').textContent =
+    `判定ルール(仮):体厚差 ±${KEEP_CM}cm 以内は「そのまま」、それ以上は増減に合わせて mAs を上下(${HVL_CM}cm で約2倍の目安)。`;
+
+  const r=LS.get(RANK_KEY,{}); const list=r[stage.id]||[];
+  list.push({nick:st.nick||'(名無し)', exp:st.exp, time:total, correct:st.correct});
+  list.sort((a,b)=>a.time-b.time); r[stage.id]=list.slice(0,10); LS.set(RANK_KEY, r);
+  renderRank(r[stage.id], 'この端末の記録');
+  if(ENDPOINT) loadGlobalRank(stage.id);
+  document.getElementById('export-box').classList.add('hidden');
+  show('scr-result');
+}
+
+function renderRank(list, src){
+  document.getElementById('rank-title').textContent = stage.name+' ランキング';
+  document.getElementById('rank-table').innerHTML='<tr><th>#</th><th>名前</th><th>経験</th><th>タイム</th><th>正解</th></tr>'+
+    list.slice(0,10).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nick||'(名無し)')}</td><td>${EXP_LBL[x.exp]||esc(x.exp)}</td><td>${fmt(x.time)}</td><td>${x.correct}/${N_Q}</td></tr>`).join('');
+  document.getElementById('rank-src').textContent = src;
+}
+
+/* ---- 集計先への送信・全体ランキング ---- */
+function sendPlay(play){
+  if(!ENDPOINT) return;
+  // Apps Script はプリフライト不要な text/plain で送る
+  fetch(ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(play)})
+    .catch(()=>{ const q=LS.get('xray_judge_unsent',[]); q.push(play); LS.set('xray_judge_unsent',q); });
+}
+function flushUnsent(){
+  if(!ENDPOINT) return;
+  const q=LS.get('xray_judge_unsent',[]); if(!q.length) return;
+  LS.set('xray_judge_unsent',[]); q.forEach(sendPlay);
+}
+function loadGlobalRank(sid){
+  document.getElementById('rank-src').textContent = '全体ランキングを読み込み中…';
+  setTimeout(()=>{   // 送信が反映されるまで少し待つ
+    fetch(ENDPOINT+'?stage='+encodeURIComponent(sid)).then(r=>r.json()).then(d=>{
+      if(stage && stage.id===sid && d && d.top) renderRank(d.top, `全体ランキング(${d.count||0}プレイ)`);
+    }).catch(()=>{ document.getElementById('rank-src').textContent='この端末の記録(全体ランキングに接続できませんでした)'; });
+  }, 1500);
+}
+flushUnsent();
+
+function toggleExport(){
+  const box=document.getElementById('export-box');
+  box.value = JSON.stringify(LS.get(STORE_KEY,[]));
+  box.classList.toggle('hidden');
+}
+</script>
+</body>
+</html>
