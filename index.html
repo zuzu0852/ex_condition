@@ -190,11 +190,11 @@ const PENALTY  = 3;    // 誤答ペナルティ(秒)
 const HVL_CM   = 4;    // 体厚 約4cm で必要線量 約2倍(仮定)
 const KEEP_CM  = 1;    // |Δ体厚| <= 1cm は「そのまま」(仮定)
 const RULE_VERSION = 'v0.5';
-const FIG_EXAGGERATE = 1.6;
+const FIG_EXAGGERATE = 1.6;   // イラストの体格差の誇張率(体厚差/基準体厚 × この値で太さを変える)
 // 生成AIなどで作った全身画像に差し替える場合: { 編のid: { 体厚差: '画像ファイルのパス' } }
 // 例) PHOTO_SETS = { abd: { '-6':'img/abd_m6.jpg', '0':'img/abd_0.jpg', '6':'img/abd_p6.jpg' } }
 // 該当する画像がない問題は、従来どおりイラストで表示します。
-const PHOTO_SETS = {};   // イラストの体格差の誇張率(体厚差/基準体厚 × この値で太さを変える)
+const PHOTO_SETS = {};
 
 // 編ごとの基準条件と、出題する体厚差(cm)20問ぶん。下げる/そのまま/上げるが概ね均等。
 const STAGES = [
