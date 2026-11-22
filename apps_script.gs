@@ -17,7 +17,8 @@
 const PLAY_COLS = ['received_at','session_id','user_id','nickname','experience','role','stage',
   'ref_thickness_cm','ref_kv','ref_mas','total_sec','correct','n','penalty_sec','rule_version','played_at','ua_mobile'];
 const RESP_COLS = ['session_id','user_id','experience','role','stage','q_index','ref_thickness_cm','ref_kv','ref_mas',
-  'patient_thickness_cm','delta_cm','height_cm','weight_kg','bmi','answer','correct_answer','correct','rt_sec','rule_version'];
+  'patient_thickness_cm','delta_cm','height_cm','weight_kg','bmi','answer','correct_answer','correct','rt_sec','rule_version',
+  'display','patient_id'];   // v0.6 で追加(既存シートでは1行目の末尾に display, patient_id を手で追記してください)
 
 function sheet_(name, cols){
   const ss = SpreadsheetApp.getActiveSpreadsheet();
